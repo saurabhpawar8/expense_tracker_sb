@@ -5,11 +5,14 @@ import com.saurabh_project.minimalist_expense_tracker.dto.TransactionDto;
 import com.saurabh_project.minimalist_expense_tracker.exception.ResourceNotFoundException;
 import com.saurabh_project.minimalist_expense_tracker.model.Category;
 import com.saurabh_project.minimalist_expense_tracker.model.Transaction;
+import com.saurabh_project.minimalist_expense_tracker.model.User;
 import com.saurabh_project.minimalist_expense_tracker.repository.CategoryRepository;
 import com.saurabh_project.minimalist_expense_tracker.repository.TransactionRepository;
+import com.saurabh_project.minimalist_expense_tracker.repository.UserRepository;
 import com.saurabh_project.minimalist_expense_tracker.request.AddTransactionRequest;
 import com.saurabh_project.minimalist_expense_tracker.utils.DateRange;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,11 +26,13 @@ public class TransactionService implements ITransactionService {
 
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
     private final EntityConverter<Transaction, TransactionDto> entityConverter;
 
     @Override
-    public Transaction addTransaction(AddTransactionRequest request,Long userId) {
-        Category category = categoryRepository.findByName(request.getCategory());
+    public Transaction addTransaction(AddTransactionRequest request, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        Category category = categoryRepository.findByNameAndUser(request.getCategory(), user);
         if (category == null) {
             throw new ResourceNotFoundException("Category not Found");
         }
@@ -49,14 +54,16 @@ public class TransactionService implements ITransactionService {
         transaction.setTime(time);
         transaction.setAmount(request.getAmount());
         transaction.setNotes(request.getNotes());
+        transaction.setUser(user);
 
         return transactionRepository.save(transaction);
 
     }
 
     @Override
-    public Transaction updateTransaction(AddTransactionRequest request, Long id,Long userId) {
-        Category category = categoryRepository.findByName(request.getCategory());
+    public Transaction updateTransaction(AddTransactionRequest request, Long id, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        Category category = categoryRepository.findByNameAndUser(request.getCategory(),user);
         if (category == null) {
             throw new ResourceNotFoundException("Category not Found");
         }
@@ -80,35 +87,37 @@ public class TransactionService implements ITransactionService {
         transaction.setAmount(request.getAmount());
         transaction.setNotes(request.getNotes());
 
+
         return transactionRepository.save(transaction);
     }
 
     @Override
-    public void deleteTransaction(Long id,Long userId) {
-        transactionRepository.findById(id)
-                .ifPresentOrElse(transactionRepository::delete, () -> {
-                    throw new ResourceNotFoundException("Transaction not found");
-                });
+    public void deleteTransaction(Long id, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        Transaction transaction = transactionRepository.findByIdAndUser(id,user);
+        if (transaction!=null){
+            transactionRepository.delete(transaction);
+        }
     }
 
     @Override
-    public List<TransactionDto> allTransactions(String dateRange, String startDate, String endDate, String category,Long userId) {
-        System.out.println(dateRange);
+    public List<TransactionDto> allTransactions(String dateRange, String startDate, String endDate, String category, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
         List<Transaction> transactions = List.of();
         if (dateRange != null && category != null) {
 
             LocalDate[] pairs = new DateRange().determineDateRanges(dateRange, startDate, endDate);
-            Category category_obj = categoryRepository.findByName(category);
-            transactions = transactionRepository.findByDateBetweenAndCategoryOrderByIdDesc(pairs[0], pairs[1], category_obj);
+            Category category_obj = categoryRepository.findByNameAndUser(category,user);
+            transactions = transactionRepository.findByDateBetweenAndCategoryAndUserOrderByIdDesc(pairs[0], pairs[1], category_obj,user);
 
         } else if (dateRange == null && category == null) {
-            transactions = transactionRepository.findByOrderByIdDesc();
+            transactions = transactionRepository.findByUserOrderByIdDesc(user);
         } else if (category == null) {
             LocalDate[] pairs = new DateRange().determineDateRanges(dateRange, startDate, endDate);
-            transactions = transactionRepository.findByDateBetweenOrderByIdDesc(pairs[0], pairs[1]);
+            transactions = transactionRepository.findByDateBetweenAndUserOrderByIdDesc(pairs[0], pairs[1],user);
         } else if (dateRange == null) {
-            Category category_obj = categoryRepository.findByName(category);
-            transactions = transactionRepository.findByCategoryOrderByIdDesc(category_obj);
+            Category category_obj = categoryRepository.findByNameAndUser(category,user);
+            transactions = transactionRepository.findByCategoryAndUserOrderByIdDesc(category_obj,user);
         }
         return transactions.stream().map(transaction -> {
                     TransactionDto dto = entityConverter
@@ -122,9 +131,9 @@ public class TransactionService implements ITransactionService {
     }
 
     @Override
-    public Transaction getTransactionById(Long id,Long userId) {
-        return transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not Found"));
+    public Transaction getTransactionById(Long id, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return transactionRepository.findByIdAndUser(id,user);
     }
 }
 

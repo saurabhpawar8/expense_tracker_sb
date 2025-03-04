@@ -56,6 +56,7 @@ public class TransactionController {
             Long userId = getUserId(token);
             Transaction transaction = transactionService.updateTransaction(request, id,userId);
             TransactionDto transactionDto = entityConverter.mapEntityToDto(transaction, TransactionDto.class);
+            transactionDto.setCategory(transaction.getCategory().getName());
             return ResponseEntity.status(OK).body(new ApiResponse("Succefully updated!", transactionDto));
         } catch (AlreadyExistsException e) {
             return ResponseEntity.status(CONFLICT).body(new ApiResponse(e.getMessage(), null));
@@ -73,6 +74,7 @@ public class TransactionController {
             Long userId = getUserId(token);
             Transaction transaction = transactionService.getTransactionById(id,userId);
             TransactionDto transactionDto = entityConverter.mapEntityToDto(transaction, TransactionDto.class);
+            transactionDto.setCategory(transaction.getCategory().getName());
             return ResponseEntity.ok(new ApiResponse("Found", transactionDto));
         } catch (AlreadyExistsException e) {
             return ResponseEntity.status(CONFLICT).body(new ApiResponse(e.getMessage(), null));

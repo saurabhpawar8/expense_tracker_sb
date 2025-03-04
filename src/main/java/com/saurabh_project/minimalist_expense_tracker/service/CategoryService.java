@@ -31,7 +31,7 @@ public class CategoryService implements ICategoryService {
     public Category addCategory(AddCategoryRequest request, Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() ->
                 new UsernameNotFoundException("User not found"));
-        if (categoryRepository.existsByName(request.getName())) {
+        if (categoryRepository.existsByNameAndUser(request.getName(),user)) {
             throw new AlreadyExistsException(request.getName() + " Already exists!");
         }
         Category category = new Category();
@@ -45,7 +45,9 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public Category updateCategory(AddCategoryRequest request, Long id, Long userId) {
-        if (categoryRepository.existsByNameAndIdNot(request.getName(), id)) {
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new UsernameNotFoundException("User not found"));
+        if (categoryRepository.existsByNameAndUserAndIdNot(request.getName(),user, id)) {
             throw new AlreadyExistsException("Already exists");
         }
         Category category = categoryRepository.findById(id)
@@ -57,7 +59,9 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public void deleteCategory(Long id, Long userId) {
-        categoryRepository.findById(id)
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new UsernameNotFoundException("User not found"));
+        categoryRepository.findByIdAndUser(id,user)
                 .ifPresentOrElse(categoryRepository::delete, () -> {
                     throw new ResourceNotFoundException("Category not found");
                 });
@@ -66,7 +70,9 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public List<CategoryDto> allCategories(Long userId) {
-        List<Category> categories = categoryRepository.findCategoryByUserId(userId);
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new UsernameNotFoundException("User not found"));
+        List<Category> categories = categoryRepository.findCategoryByUser(user);
         return categories.stream().map(category -> entityConverter
                         .mapEntityToDto(category, CategoryDto.class))
                 .collect(Collectors.toList());
@@ -74,9 +80,12 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public Category getCategoryById(Long id, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new UsernameNotFoundException("User not found"));
 
         try {
-            return categoryRepository.findByIdAndUserId(id, userId);
+            return categoryRepository.findByIdAndUser(id, user)
+                    .orElseThrow(()->new ResourceNotFoundException("Category not Found"));
         } catch (ResourceNotFoundException e) {
             throw new ResourceNotFoundException("Category not Found");
         }
@@ -84,7 +93,9 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public List<String> listOfCategories(Long userId) {
-        return categoryRepository.findCategoryNames(userId);
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new UsernameNotFoundException("User not found"));
+        return categoryRepository.findNamesByUser(user);
     }
 }
 

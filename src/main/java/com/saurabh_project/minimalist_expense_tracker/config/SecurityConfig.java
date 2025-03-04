@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         rQ -> {
                             rQ.requestMatchers("/user/login","/user/register").permitAll();
-                            rQ.requestMatchers("/transaction/**","/category/**").authenticated();
+                            rQ.requestMatchers("/transaction/**","/category/**","/download/**").authenticated();
                         }
                 )
                 .sessionManagement(

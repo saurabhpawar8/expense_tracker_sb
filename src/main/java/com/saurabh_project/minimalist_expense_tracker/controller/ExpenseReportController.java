@@ -23,12 +23,13 @@ public class ExpenseReportController {
     }
 
     @GetMapping("/excel")
-    public ResponseEntity<byte[]> downloadExpensesInExcel(@RequestHeader("Authorization") String token, @RequestParam String dateRange,
+    public ResponseEntity<byte[]> downloadExpensesInExcel(@RequestHeader("Authorization") String token,@RequestParam(required = false) String dateRange,
                                                           @RequestParam(required = false) String startDate,
-                                                          @RequestParam(required = false) String endDate) throws IOException {
+                                                          @RequestParam(required = false) String endDate,
+                                                          @RequestParam(required = false) String category) throws IOException {
 
         Long userId = getUserId(token);
-        byte[] bytes = expenseReportService.generateExpenseExcel(dateRange, startDate, endDate,userId);
+        byte[] bytes = expenseReportService.generateExpenseExcel(dateRange, startDate, endDate,category,userId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=expense.xlsx")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
